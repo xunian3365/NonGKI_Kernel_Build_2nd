@@ -1,0 +1,45 @@
+name: Build Redmi 10X 5G (MIUI A11)
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu \
+              libssl-dev flex bison bc
+
+      - name: Clone kernel source
+        run: |
+          git clone --depth=1 -b atom-q-oss https://github.com/MiCode/Xiaomi_Kernel_OpenSource.git kernel-source
+
+      - name: Show available atom defconfigs
+        run: |
+          echo "Available atom defconfigs:"
+          ls kernel-source/arch/arm64/configs/ | grep -i atom || echo "No atom defconfig found!"
+
+      - name: Build kernel
+        working-directory: kernel-source
+        env:
+          ARCH: arm64
+          CROSS_COMPILE: aarch64-linux-gnu-
+        run: |
+          make atom_defconfig
+          make -j$(nproc) KCFLAGS="-Wno-error"
+
+      - name: Upload kernel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: redmi-10x5g-kernel
+          path: |
+            kernel-source/arch/arm64/boot/Image
+            kernel-source/arch/arm64/boot/Image.gz
+            kernel-source/arch/arm64/boot/Image.gz-dtb
+            kernel-source/arch/arm64/boot/dts/
